@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pacific Time Clock</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 1920px;
+    height: 1080px;
+    background: transparent;
+    overflow: hidden;
+  }
+
+  .clock-wrap {
+    width: 1920px;
+    height: 1080px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #ffffff;
+  }
+
+  #time {
+    font-size: 220px;
+    font-weight: 600;
+    letter-spacing: 6px;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(0,0,0,0.6);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #seconds {
+    font-size: 0.45em;
+    opacity: 0.85;
+    vertical-align: baseline;
+  }
+
+  #ampm {
+    font-size: 0.35em;
+    margin-left: 20px;
+    vertical-align: middle;
+    opacity: 0.85;
+  }
+
+  #date {
+    margin-top: 20px;
+    font-size: 48px;
+    font-weight: 400;
+    letter-spacing: 3px;
+    opacity: 0.85;
+    text-shadow: 0 0 12px rgba(0,0,0,0.6);
+  }
+
+  #tz-label {
+    margin-top: 10px;
+    font-size: 24px;
+    font-weight: 400;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="clock-wrap">
+  <div id="time">--:--<span id="seconds">--</span><span id="ampm">--</span></div>
+  <div id="date">Loading...</div>
+  <div id="tz-label">Pacific Time</div>
+</div>
+
+<script>
+  const TIME_ZONE = 'America/Los_Angeles';
+
+  function updateClock() {
+    const now = new Date();
+
+    // Format time parts using Intl for correct Pacific time (handles PST/PDT automatically)
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+
+    const parts = timeFormatter.formatToParts(now);
+    const get = (type) => parts.find(p => p.type === type)?.value || '';
+
+    const hour = get('hour');
+    const minute = get('minute');
+    const second = get('second');
+    const dayPeriod = get('dayPeriod').toUpperCase();
+
+    document.getElementById('time').innerHTML =
+      `${hour}:${minute}<span id="seconds">:${second}</span><span id="ampm">${dayPeriod}</span>`;
+
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: TIME_ZONE,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    document.getElementById('date').textContent = dateFormatter.format(now);
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+
+</body>
+</html>
