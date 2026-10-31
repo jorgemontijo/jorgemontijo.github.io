@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KCRW</title>
+<style>
+:root{--bg:#14171a;--panel:#1c2024;--ink:#ece8df;--dim:#8b9199;--amber:#f2a33a;--live:#e5533d;--line:#2c3238}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.4 "Avenir Next","Helvetica Neue",Arial,sans-serif}
+main{width:min(100%,420px);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:20px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{margin:0;font:700 2.2rem/1 "Avenir Next Condensed","Arial Narrow",Arial,sans-serif;letter-spacing:.04em}
+.freq,.lbl,#status{font:.72rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase}
+.freq{color:var(--amber)}
+.dial{position:relative;height:58px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(90deg,var(--dim) 0 1px,transparent 1px 14px) bottom/100% 10px no-repeat,
+             repeating-linear-gradient(90deg,var(--dim) 0 1px,transparent 1px 70px) bottom/100% 22px no-repeat}
+.dial span{position:absolute;top:6px;font:.68rem ui-monospace,Menlo,Consolas,monospace;color:var(--dim)}
+.needle{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--live);box-shadow:0 0 10px var(--live);opacity:.35;transition:opacity .4s}
+.playing .needle{opacity:1}
+.chans{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chans button{display:grid;gap:6px;justify-items:start;text-align:left;padding:16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.chans b{font-size:1.1rem}
+.chans .lbl{color:var(--dim)}
+.chans button[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#1a1205}
+.chans button[aria-pressed=true] .lbl{color:#1a1205}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.vol{display:grid;gap:6px}
+.vol label{color:var(--dim)}
+input[type=range]{width:100%;accent-color:var(--amber)}
+#status{color:var(--dim);min-height:1.2em;overflow-wrap:anywhere}
+#status.err{color:var(--live)}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>KCRW</h1><span class="freq">89.9 FM · Los Angeles</span></header>
+  <div class="dial" aria-hidden="true">
+    <span style="left:4%">88</span><span style="left:30%">89</span><span style="left:50%;color:var(--amber)">89.9</span><span style="left:74%">91</span><span style="left:92%">92</span>
+    <div class="needle"></div>
+  </div>
+  <div class="chans">
+    <button id="onair" aria-pressed="false"><b>On Air</b><span class="lbl"></span></button>
+    <button id="e24" aria-pressed="false"><b>Eclectic 24</b><span class="lbl"></span></button>
+  </div>
+  <div class="vol"><label class="lbl" for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.01" value="1"></div>
+  <div id="status" aria-live="polite">Stopped</div>
+</main>
+<audio id="a" preload="none"></audio>
+<script>
+var URLS={onair:"https://streams.kcrw.com/kcrw_aac",e24:"https://streams.kcrw.com/e24_aac"},
+    a=document.getElementById("a"),st=document.getElementById("status"),vol=document.getElementById("vol"),cur=null;
+function ui(state){
+  ["onair","e24"].forEach(function(k){
+    var b=document.getElementById(k),on=k===cur;
+    b.setAttribute("aria-pressed",on);
+    b.lastChild.textContent=on?state:"";
+  });
+  document.body.classList.toggle("playing",state==="Live");
+  st.classList.remove("err");
+  st.textContent=cur?state:"";
+}
+function stop(){cur=null;a.removeAttribute("src");a.load();ui("");}
+function play(k){
+  cur=k;a.src=URLS[k];ui("Connecting");
+  a.play().catch(function(e){if(e.name!=="AbortError")fail(e.message);});
+}
+function fail(m){var k=cur;stop();st.classList.add("err");st.textContent="Could not play "+(k==="e24"?"Eclectic 24":"On Air")+(m?": "+m:"");}
+["onair","e24"].forEach(function(k){
+  document.getElementById(k).addEventListener("click",function(){cur===k?stop():play(k);});
+});
+a.addEventListener("playing",function(){ui("Live");});
+a.addEventListener("waiting",function(){if(cur)ui("Buffering");});
+a.addEventListener("error",function(){if(cur)fail("stream unavailable");});
+vol.addEventListener("input",function(){a.volume=+vol.value;});
+a.volume=+vol.value;
+</script>
+</body>
+</html>
