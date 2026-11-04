@@ -51,9 +51,7 @@
   <div class="card">
     <div class="label">Episode</div>
     <div class="days" id="dayCount">–</div>
-    //<div class="sub" id="yearsSub">days old</div>
-    //<div class="date" id="today"></div>
-  </div>
+    </div>
 
   <script>
     const birthDate = new Date(1974, 1, 16); // Feb 16, 1974 (month is 0-indexed), local midnight
@@ -79,11 +77,7 @@
       }
 
       document.getElementById('dayCount').textContent = diffDays.toLocaleString();
-      document.getElementById('yearsSub').textContent =
-        `days old (${years} years, ${months} months, ${days} days)`;
-      document.getElementById('today').textContent =
-        'As of ' + today.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-    }
+          }
 
     updateAge();
     // Recheck every minute in case the page stays open across midnight
