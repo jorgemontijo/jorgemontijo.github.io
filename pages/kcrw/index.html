@@ -1,83 +1,360 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KCRW 89.9 FM</title>
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<title>KCRW</title>
 <style>
-:root{--bg:#14171a;--panel:#1c2024;--ink:#ece8df;--dim:#8b9199;--amber:#f2a33a;--live:#e5533d;--line:#2c3238}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--ink);font:16px/1.4 "Avenir Next","Helvetica Neue",Arial,sans-serif}
-main{width:min(100%,420px);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:20px}
-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-h1{margin:0;font:700 2.2rem/1 "Avenir Next Condensed","Arial Narrow",Arial,sans-serif;letter-spacing:.04em}
-.freq,.lbl,#status{font:.72rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase}
-.freq{color:var(--amber)}
-.dial{position:relative;height:58px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  background:repeating-linear-gradient(90deg,var(--dim) 0 1px,transparent 1px 14px) bottom/100% 10px no-repeat,
-             repeating-linear-gradient(90deg,var(--dim) 0 1px,transparent 1px 70px) bottom/100% 22px no-repeat}
-.dial span{position:absolute;top:6px;font:.68rem ui-monospace,Menlo,Consolas,monospace;color:var(--dim)}
-.needle{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--live);box-shadow:0 0 10px var(--live);opacity:.35;transition:opacity .4s}
-.playing .needle{opacity:1}
-.chans{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.chans button{display:grid;gap:6px;justify-items:start;text-align:left;padding:16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
-.chans b{font-size:1.1rem}
-.chans .lbl{color:var(--dim)}
-.chans button[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:#1a1205}
-.chans button[aria-pressed=true] .lbl{color:#1a1205}
-button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-.vol{display:grid;gap:6px}
-.vol label{color:var(--dim)}
-input[type=range]{width:100%;accent-color:var(--amber)}
-#status{color:var(--dim);min-height:1.2em;overflow-wrap:anywhere}
-#status.err{color:var(--live)}
+  :root {
+    --bg: #141719;
+    --amber: #f2a33b;
+    --red: #e65440;
+    --yellow: #ffe894;
+    --gray: #8e8e93;
+    --inset: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  .radio { width: 100%; max-width: 520px; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; }
+  header h1 { margin: 0; font-size: 40px; font-weight: 700; }
+  header .freq { color: var(--amber); font-size: 12px; }
+
+  /* ---------- Dial ---------- */
+  .dial { padding: 8px 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+  .dial::before, .dial::after, .rail {
+    content: ""; position: absolute; left: 0; right: 0; height: 1px;
+    background: rgba(255,255,255,.12);
+    transition: background .4s ease, box-shadow .4s ease;
+  }
+  .dial::before { top: 0; }
+  .dial::after { bottom: 0; }
+  .dial.live::before, .dial.live::after {
+    background: var(--yellow);
+    box-shadow: 0 0 6px rgba(255,232,148,.7);
+  }
+  .labels { position: relative; height: 14px; font-size: 10px; }
+  .labels span {
+    position: absolute; top: 0; transform: translateX(-50%);
+    color: var(--gray); transition: color .4s ease, text-shadow .4s ease;
+  }
+  .labels span.station { color: var(--amber); }
+  .dial.live .labels span:not(.station) { color: var(--yellow); text-shadow: 0 0 8px rgba(255,232,148,.6); }
+
+  .scale { position: relative; height: 44px; }
+  .scale .tick {
+    position: absolute; bottom: 0; width: 1px; background: var(--gray);
+    transform: translateX(-50%);
+  }
+  .scale .tick.lit {
+    background: var(--yellow); opacity: 0;
+    box-shadow: 0 0 4px rgba(255,232,148,.8);
+    transition: opacity .4s ease;
+  }
+  .dial.live .scale .tick.lit { opacity: 1; }
+  .needle {
+    position: absolute; top: 0; bottom: 0; width: 2px; transform: translateX(-50%);
+    background: var(--red); opacity: .35;
+    transition: opacity .4s ease, box-shadow .4s ease;
+  }
+  .dial.live .needle { opacity: 1; box-shadow: 0 0 6px var(--red); }
+
+  /* ---------- Channel buttons ---------- */
+  .channels { display: flex; gap: 12px; }
+  .channel {
+    flex: 1; text-align: left; cursor: pointer;
+    padding: 16px; border-radius: 10px;
+    background: rgba(255,255,255,.06); color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    font: inherit; outline: none;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .channel .name { font-size: 17px; font-weight: 600; }
+  .channel .state { font-size: 12px; min-height: 1.2em; }
+  .channel.on { background: var(--amber); color: #000; }
+
+  /* ---------- Fader ---------- */
+  .fader { display: flex; flex-direction: column; gap: 4px; color: var(--yellow); }
+  .fader .readout { display: flex; justify-content: space-between; font-size: 10px; }
+  .track {
+    --v: 1;
+    position: relative; height: 48px; touch-action: none; cursor: pointer; outline: none; user-select: none;
+  }
+  .track .t {
+    position: absolute; width: 1px; transform: translateX(-50%);
+    background: var(--gray);
+  }
+  .track .t.top { top: 0; }
+  .track .t.bottom { bottom: 0; }
+  .track .t.lit { background: var(--yellow); }
+  .slot {
+    position: absolute; left: 15px; right: 15px; top: 50%; height: 6px; transform: translateY(-50%);
+    background: #000; border: 1px solid rgba(255,255,255,.15); border-radius: 3px;
+  }
+  .fill {
+    position: absolute; left: 15px; top: 50%; height: 2px; transform: translateY(-50%);
+    width: calc((100% - 30px) * var(--v));
+    background: rgba(255,232,148,.55); border-radius: 1px;
+  }
+  .cap {
+    position: absolute; top: 50%; width: 30px; height: 40px; transform: translateY(-50%);
+    left: calc((100% - 30px) * var(--v));
+    background: linear-gradient(#474747, #1f1f1f);
+    border: 1px solid rgba(255,255,255,.2); border-radius: 3px;
+    box-shadow: 0 2px 3px rgba(0,0,0,.6);
+    display: flex; align-items: stretch; justify-content: center; gap: 3px; padding: 6px 0;
+  }
+  .cap i { display: block; width: 1px; background: rgba(255,255,255,.18); }
+  .cap i.mid { width: 2px; background: var(--yellow); }
+  .track:focus-visible .cap { outline: 2px solid var(--yellow); outline-offset: 2px; }
+
+  .message { font-size: 12px; color: var(--red); min-height: 1.2em; }
 </style>
 </head>
 <body>
-<main>
-  <header><h1>KCRW</h1><span class="freq">89.9 FM · Los Angeles</span></header>
-  <div class="dial" aria-hidden="true">
-    <span style="left:4%">88</span><span style="left:30%">89</span><span style="left:50%;color:var(--amber)">89.9</span><span style="left:74%">91</span><span style="left:92%">92</span>
-    <div class="needle"></div>
-  </div>
-  <div class="chans">
-    <button id="onair" aria-pressed="false"><b>On Air</b><span class="lbl"></span></button>
-    <button id="e24" aria-pressed="false"><b>Eclectic 24</b><span class="lbl"></span></button>
-  </div>
-  <div class="vol"><label class="lbl" for="vol">Volume</label><input id="vol" type="range" min="0" max="1" step="0.01" value="1"></div>
-  <div id="status" aria-live="polite">Stopped</div>
+<main class="radio">
+  <header>
+    <h1>KCRW</h1>
+    <span class="freq mono">89.9 FM · LOS ANGELES</span>
+  </header>
+
+  <section class="dial" id="dial">
+    <div class="labels mono" id="labels"></div>
+    <div class="scale" id="scale"><div class="needle" id="needle"></div></div>
+  </section>
+
+  <section class="channels" id="channels"></section>
+
+  <section class="fader">
+    <div class="readout mono"><span>VOLUME</span><span id="pct">100%</span></div>
+    <div class="track" id="track" role="slider" tabindex="0"
+         aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+      <div class="slot"></div>
+      <div class="fill"></div>
+      <div class="cap"><i></i><i></i><i></i><i class="mid"></i><i></i><i></i><i></i></div>
+    </div>
+  </section>
+
+  <div class="message mono" id="message">&nbsp;</div>
 </main>
-<audio id="a" preload="none"></audio>
+
+<audio id="audio" preload="none"></audio>
+
 <script>
-var URLS={onair:"https://streams.kcrw.com/kcrw_aac",e24:"https://streams.kcrw.com/e24_aac"},
-    a=document.getElementById("a"),st=document.getElementById("status"),vol=document.getElementById("vol"),cur=null;
-function ui(state){
-  ["onair","e24"].forEach(function(k){
-    var b=document.getElementById(k),on=k===cur;
-    b.setAttribute("aria-pressed",on);
-    b.lastChild.textContent=on?state:"";
+(() => {
+  const LOW = 88, HIGH = 92, STATION = 89.9, INSET = 14;
+
+  const CHANNELS = [
+    { id: "onAir", title: "On Air",
+      pls: "https://media.kcrw.com/pls/kcrwsimulcast.pls",
+      fallback: "https://streams.kcrw.com/kcrw_aac" },
+    { id: "e24", title: "Eclectic 24",
+      pls: "https://media.kcrw.com/pls/kcrwmusic.pls",
+      fallback: "https://streams.kcrw.com/e24_aac" },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const audio = $("audio");
+  const dial = $("dial");
+
+  // Position along the dial, matching the 14px inset on each side.
+  const dialLeft = f => `calc(${INSET}px + ${(f - LOW) / (HIGH - LOW)} * (100% - ${INSET * 2}px))`;
+
+  // ---------- Dial ----------
+  [["88", 88], ["89", 89], ["89.9", 89.9], ["91", 91], ["92", 92]].forEach(([text, f]) => {
+    const s = document.createElement("span");
+    s.textContent = text;
+    s.style.left = dialLeft(f);
+    if (f === STATION) s.className = "station";
+    $("labels").appendChild(s);
   });
-  document.body.classList.toggle("playing",state==="Live");
-  st.classList.remove("err");
-  st.textContent=cur?state:"";
-}
-function stop(){cur=null;a.removeAttribute("src");a.load();ui("");}
-function play(k){
-  cur=k;a.src=URLS[k];ui("Connecting");
-  a.play().catch(function(e){if(e.name!=="AbortError")fail(e.message);});
-}
-function fail(m){var k=cur;stop();st.classList.add("err");st.textContent="Could not play "+(k==="e24"?"Eclectic 24":"On Air")+(m?": "+m:"");}
-["onair","e24"].forEach(function(k){
-  document.getElementById(k).addEventListener("click",function(){cur===k?stop():play(k);});
-});
-a.addEventListener("playing",function(){ui("Live");});
-a.addEventListener("waiting",function(){if(cur)ui("Buffering");});
-a.addEventListener("error",function(){if(cur)fail("stream unavailable");});
-vol.addEventListener("input",function(){a.volume=+vol.value;});
-a.volume=+vol.value;
+
+  const scale = $("scale");
+  for (let i = 0; i <= 40; i++) {
+    const f = LOW + i * 0.1;
+    const h = i % 10 === 0 ? 24 : (i % 5 === 0 ? 16 : 9);
+    for (const lit of [false, true]) {
+      const t = document.createElement("div");
+      t.className = "tick" + (lit ? " lit" : "");
+      t.style.left = dialLeft(f);
+      t.style.height = h + "px";
+      scale.appendChild(t);
+    }
+  }
+  $("needle").style.left = dialLeft(STATION);
+
+  // ---------- Fader ----------
+  const track = $("track");
+  const DIVISIONS = 20;
+  const faderTicks = [];
+  for (let i = 0; i <= DIVISIONS; i++) {
+    const len = i % 5 === 0 ? 9 : 5;
+    for (const pos of ["top", "bottom"]) {
+      const t = document.createElement("div");
+      t.className = "t " + pos;
+      t.style.left = `calc(15px + ${i / DIVISIONS} * (100% - 30px))`;
+      t.style.height = len + "px";
+      track.appendChild(t);
+      faderTicks.push({ el: t, fraction: i / DIVISIONS });
+    }
+  }
+
+  let volume = 1;
+  function setVolume(v) {
+    volume = Math.min(1, Math.max(0, v));
+    audio.volume = volume;
+    track.style.setProperty("--v", volume);
+    const pct = Math.round(volume * 100);
+    $("pct").textContent = pct + "%";
+    track.setAttribute("aria-valuenow", pct);
+    faderTicks.forEach(t => t.el.classList.toggle("lit", t.fraction <= volume + 0.0001));
+  }
+  const fromPointer = e => {
+    const r = track.getBoundingClientRect();
+    setVolume((e.clientX - r.left - 15) / (r.width - 30));
+  };
+  track.addEventListener("pointerdown", e => {
+    track.setPointerCapture(e.pointerId);
+    fromPointer(e);
+  });
+  track.addEventListener("pointermove", e => {
+    if (track.hasPointerCapture(e.pointerId)) fromPointer(e);
+  });
+  track.addEventListener("keydown", e => {
+    const step = { ArrowRight: .05, ArrowUp: .05, ArrowLeft: -.05, ArrowDown: -.05 }[e.key];
+    if (step !== undefined) { setVolume(volume + step); e.preventDefault(); }
+    else if (e.key === "Home") { setVolume(0); e.preventDefault(); }
+    else if (e.key === "End") { setVolume(1); e.preventDefault(); }
+  });
+  setVolume(1);
+
+  // ---------- Player ----------
+  let current = null;
+  let status = "";
+  let token = 0;
+
+  const buttons = {};
+  CHANNELS.forEach(ch => {
+    const b = document.createElement("button");
+    b.className = "channel";
+    b.innerHTML = `<span class="name">${ch.title}</span><span class="state mono">&nbsp;</span>`;
+    b.addEventListener("click", () => toggle(ch));
+    $("channels").appendChild(b);
+    buttons[ch.id] = b;
+  });
+
+  function render() {
+    CHANNELS.forEach(ch => {
+      const on = current === ch;
+      buttons[ch.id].classList.toggle("on", on);
+      buttons[ch.id].querySelector(".state").textContent = on ? status : "\u00a0";
+    });
+    dial.classList.toggle("live", status === "Live");
+    $("message").textContent = current ? "\u00a0" : (status || "\u00a0");
+  }
+
+  function setStatus(s) { status = s; render(); }
+
+  function toggle(ch) { current === ch ? stop() : play(ch); }
+
+  function stop(message = "") {
+    token++;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    current = null;
+    status = message;
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = "none";
+    }
+    render();
+  }
+
+  async function resolve(ch) {
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 3000);
+      const res = await fetch(ch.pls, { signal: ctl.signal });
+      clearTimeout(timer);
+      const text = await res.text();
+      for (const line of text.split(/\r?\n/)) {
+        const t = line.trim();
+        if (t.toLowerCase().startsWith("file1=")) {
+          const url = t.slice(6);
+          if (url.startsWith("https://")) return url;
+        }
+      }
+    } catch (_) { /* blocked by CORS or offline: use the direct stream */ }
+    return ch.fallback;
+  }
+
+  async function play(ch) {
+    stop();
+    current = ch;
+    setStatus("Connecting");
+    const mine = token;
+
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "KCRW " + ch.title, artist: "KCRW 89.9 FM"
+      });
+      navigator.mediaSession.playbackState = "playing";
+    }
+
+    const url = await resolve(ch);
+    if (mine !== token) return;
+    start(url, url === ch.fallback ? null : ch.fallback, ch, mine);
+  }
+
+  function start(url, fallback, ch, mine) {
+    if (mine !== token) return;
+    audio.src = url;
+    audio.play().catch(err => {
+      if (mine !== token || err.name === "AbortError") return;
+      failed(fallback, ch, mine);
+    });
+  }
+
+  function failed(fallback, ch, mine) {
+    if (mine !== token) return;
+    if (fallback) start(fallback, null, ch, mine);
+    else stop("Could not play " + ch.title);
+  }
+
+  // Status follows the audio element, so stalls and recoveries are reflected.
+  audio.addEventListener("playing", () => { if (current) setStatus("Live"); });
+  audio.addEventListener("waiting", () => { if (current) setStatus("Buffering"); });
+  audio.addEventListener("stalled", () => { if (current) setStatus("Buffering"); });
+  audio.addEventListener("error", () => {
+    if (!current || !audio.getAttribute("src")) return;
+    const ch = current;
+    const fallback = audio.src === ch.fallback ? null : ch.fallback;
+    failed(fallback, ch, token);
+  });
+
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("pause", () => stop());
+    navigator.mediaSession.setActionHandler("stop", () => stop());
+  }
+
+  render();
+})();
 </script>
 </body>
 </html>

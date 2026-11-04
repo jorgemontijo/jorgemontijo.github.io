@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import MediaPlayer
+import UIKit
 
 enum Channel: String, CaseIterable, Identifiable {
     case onAir, e24
@@ -68,10 +69,16 @@ final class RadioPlayer: ObservableObject {
         #if os(iOS) || os(tvOS)
         try? AVAudioSession.sharedInstance().setActive(true)
         #endif
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: "KCRW \(channel.title)",
+            MPMediaItemPropertyArtist: "KCRW 89.9 FM",
             MPNowPlayingInfoPropertyIsLiveStream: true
         ]
+        // Lock screen / Control Center artwork: image named "art" in Assets.xcassets.
+        if let image = UIImage(named: "art") {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         task = Task {
             let url = await resolve(channel)
             guard !Task.isCancelled else { return }

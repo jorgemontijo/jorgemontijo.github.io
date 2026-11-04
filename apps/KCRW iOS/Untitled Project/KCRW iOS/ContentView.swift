@@ -40,7 +40,11 @@ struct ChannelButton: View {
 
     var body: some View {
         let on = radio.current == channel
-        Button { radio.toggle(channel) } label: {
+        Button {
+            Task {
+                await radio.toggle(channel)
+            }
+        } label: {
             VStack(alignment: .leading, spacing: 6) {
                 Text(channel.title).font(.headline)
                 Text(on ? radio.status : " ").font(.caption.monospaced())
@@ -71,6 +75,7 @@ struct Dial: View {
 
             ZStack {
                 Canvas { context, size in
+                    guard size.width.isFinite, size.width > 0 else { return }
                     var x: CGFloat = 0
                     var index = 0
                     while x <= size.width {
