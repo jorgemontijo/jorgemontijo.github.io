@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KCRW 89.9 FM</title>
+<title>89.9 FM Community Radio • Los Angeles</title>
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -87,50 +87,14 @@
   .channel .name { font-size: 17px; font-weight: 600; }
   .channel .state { font-size: 12px; min-height: 1.2em; }
   .channel.on { background: var(--amber); color: #000; }
-
-  /* ---------- Fader ---------- */
-  .fader { display: flex; flex-direction: column; gap: 4px; color: var(--yellow); }
-  .fader .readout { display: flex; justify-content: space-between; font-size: 10px; }
-  .track {
-    --v: 1;
-    position: relative; height: 48px; touch-action: none; cursor: pointer; outline: none; user-select: none;
-  }
-  .track .t {
-    position: absolute; width: 1px; transform: translateX(-50%);
-    background: var(--gray);
-  }
-  .track .t.top { top: 0; }
-  .track .t.bottom { bottom: 0; }
-  .track .t.lit { background: var(--yellow); }
-  .slot {
-    position: absolute; left: 15px; right: 15px; top: 50%; height: 6px; transform: translateY(-50%);
-    background: #000; border: 1px solid rgba(255,255,255,.15); border-radius: 3px;
-  }
-  .fill {
-    position: absolute; left: 15px; top: 50%; height: 2px; transform: translateY(-50%);
-    width: calc((100% - 30px) * var(--v));
-    background: rgba(255,232,148,.55); border-radius: 1px;
-  }
-  .cap {
-    position: absolute; top: 50%; width: 30px; height: 40px; transform: translateY(-50%);
-    left: calc((100% - 30px) * var(--v));
-    background: linear-gradient(#474747, #1f1f1f);
-    border: 1px solid rgba(255,255,255,.2); border-radius: 3px;
-    box-shadow: 0 2px 3px rgba(0,0,0,.6);
-    display: flex; align-items: stretch; justify-content: center; gap: 3px; padding: 6px 0;
-  }
-  .cap i { display: block; width: 1px; background: rgba(255,255,255,.18); }
-  .cap i.mid { width: 2px; background: var(--yellow); }
-  .track:focus-visible .cap { outline: 2px solid var(--yellow); outline-offset: 2px; }
-
   .message { font-size: 12px; color: var(--red); min-height: 1.2em; }
 </style>
 </head>
 <body>
 <main class="radio">
   <header>
-    <h1>KCRW</h1>
-    <span class="freq mono">89.9 FM · LOS ANGELES</span>
+    <h1>89.9 FM</h1>
+    <span class="freq mono">Community Radio · LOS ANGELES</span>
   </header>
 
   <section class="dial" id="dial">
@@ -139,9 +103,7 @@
   </section>
 
   <section class="channels" id="channels"></section>
-
-  <section class="fader">
-    <div class="readout mono"><span>VOLUME</span><span id="pct">100%</span></div>
+    <div class="readout mono"><span></span><span id="pct"></span></div>
     <div class="track" id="track" role="slider" tabindex="0"
          aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
       <div class="slot"></div>
