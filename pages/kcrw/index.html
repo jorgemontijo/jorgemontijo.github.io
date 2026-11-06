@@ -29,15 +29,16 @@
   }
   .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
-  .radio { width: 100%; max-width: 520px; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+  .radio { width: 100%; max-width: 520px; padding: 24px; display: flex; flex-direction: column; gap: 32px; }
 
-  header { display: flex; justify-content: space-between; align-items: baseline; }
-  header h1 { margin: 0; font-size: 40px; font-weight: 700; }
-  header .freq { color: var(--amber); font-size: 12px; }
+  /* ---------- Banner ---------- */
+  .banner { display: flex; justify-content: space-between; align-items: baseline; }
+  .banner h1 { margin: 0; font-size: 40px; font-weight: 700; }
+  .banner .freq { color: var(--amber); font-size: 12px; }
 
   /* ---------- Dial ---------- */
   .dial { padding: 8px 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
-  .dial::before, .dial::after, .rail {
+  .dial::before, .dial::after {
     content: ""; position: absolute; left: 0; right: 0; height: 1px;
     background: rgba(255,255,255,.12);
     transition: background .4s ease, box-shadow .4s ease;
@@ -92,10 +93,10 @@
 </head>
 <body>
 <main class="radio">
-  <header>
+  <section class="banner">
     <h1>89.9 FM</h1>
     <span class="freq mono">Community Radio · LOS ANGELES</span>
-  </header>
+  </section>
 
   <section class="dial" id="dial">
     <div class="labels mono" id="labels"></div>
@@ -103,14 +104,6 @@
   </section>
 
   <section class="channels" id="channels"></section>
-    <div class="readout mono"><span></span><span id="pct"></span></div>
-    <div class="track" id="track" role="slider" tabindex="0"
-         aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
-      <div class="slot"></div>
-      <div class="fill"></div>
-      <div class="cap"><i></i><i></i><i></i><i class="mid"></i><i></i><i></i><i></i></div>
-    </div>
-  </section>
 
   <div class="message mono" id="message">&nbsp;</div>
 </main>
@@ -134,7 +127,6 @@
   const audio = $("audio");
   const dial = $("dial");
 
-  // Position along the dial, matching the 14px inset on each side.
   const dialLeft = f => `calc(${INSET}px + ${(f - LOW) / (HIGH - LOW)} * (100% - ${INSET * 2}px))`;
 
   // ---------- Dial ----------
@@ -159,51 +151,6 @@
     }
   }
   $("needle").style.left = dialLeft(STATION);
-
-  // ---------- Fader ----------
-  const track = $("track");
-  const DIVISIONS = 20;
-  const faderTicks = [];
-  for (let i = 0; i <= DIVISIONS; i++) {
-    const len = i % 5 === 0 ? 9 : 5;
-    for (const pos of ["top", "bottom"]) {
-      const t = document.createElement("div");
-      t.className = "t " + pos;
-      t.style.left = `calc(15px + ${i / DIVISIONS} * (100% - 30px))`;
-      t.style.height = len + "px";
-      track.appendChild(t);
-      faderTicks.push({ el: t, fraction: i / DIVISIONS });
-    }
-  }
-
-  let volume = 1;
-  function setVolume(v) {
-    volume = Math.min(1, Math.max(0, v));
-    audio.volume = volume;
-    track.style.setProperty("--v", volume);
-    const pct = Math.round(volume * 100);
-    $("pct").textContent = pct + "%";
-    track.setAttribute("aria-valuenow", pct);
-    faderTicks.forEach(t => t.el.classList.toggle("lit", t.fraction <= volume + 0.0001));
-  }
-  const fromPointer = e => {
-    const r = track.getBoundingClientRect();
-    setVolume((e.clientX - r.left - 15) / (r.width - 30));
-  };
-  track.addEventListener("pointerdown", e => {
-    track.setPointerCapture(e.pointerId);
-    fromPointer(e);
-  });
-  track.addEventListener("pointermove", e => {
-    if (track.hasPointerCapture(e.pointerId)) fromPointer(e);
-  });
-  track.addEventListener("keydown", e => {
-    const step = { ArrowRight: .05, ArrowUp: .05, ArrowLeft: -.05, ArrowDown: -.05 }[e.key];
-    if (step !== undefined) { setVolume(volume + step); e.preventDefault(); }
-    else if (e.key === "Home") { setVolume(0); e.preventDefault(); }
-    else if (e.key === "End") { setVolume(1); e.preventDefault(); }
-  });
-  setVolume(1);
 
   // ---------- Player ----------
   let current = null;
@@ -299,7 +246,6 @@
     else stop("Could not play " + ch.title);
   }
 
-  // Status follows the audio element, so stalls and recoveries are reflected.
   audio.addEventListener("playing", () => { if (current) setStatus("Live"); });
   audio.addEventListener("waiting", () => { if (current) setStatus("Buffering"); });
   audio.addEventListener("stalled", () => { if (current) setStatus("Buffering"); });
