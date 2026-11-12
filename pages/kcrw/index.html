@@ -89,7 +89,6 @@
   .channel .state { font-size: 12px; min-height: 1.2em; }
   .channel.on { background: var(--amber); color: #000; }
   .message { font-size: 12px; color: var(--red); min-height: 1.2em; }
- }
 </style>
 </head>
 <body>
@@ -179,6 +178,17 @@
   }
 
   function setStatus(s) { status = s; render(); }
+
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: "KCRW" + ch.title,
+    artist: "KCRW 89.9 FM",
+    album: "Los Angeles",
+    artwork: [
+      {scr: "/art/art_small" sizes: "256 x 256"},
+      {scr: "/art/art_medium" sizes: "512 x 512"},
+      {scr: "/art/art_large" sizes: "1024 x 1024"},
+    ]
+  })
 
   function toggle(ch) { current === ch ? stop() : play(ch); }
 
