@@ -29,12 +29,27 @@ enum Channel: String, CaseIterable, Identifiable {
 }
 
 final class RadioPlayer: ObservableObject {
-    @Published var current: Channel?
-    @Published var status = ""
-    /// 0...1 app gain on the stream, defaults to full. Only the macOS fader changes it.
-    @Published var volume: Double = 1.0 {
-        didSet { player.volume = Float(volume) }
+    /// Playback state. The UI compares against cases, never against display strings.
+    enum Status: Equatable {
+        case idle
+        case connecting
+        case buffering
+        case live
+        case failed(String)
+
+        var text: String {
+            switch self {
+            case .idle: return ""
+            case .connecting: return "Connecting"
+            case .buffering: return "Buffering"
+            case .live: return "Live"
+            case .failed(let message): return message
+            }
+        }
     }
+
+    @Published var current: Channel?
+    @Published var status: Status = .idle
 
     /// Exposed so the macOS AirPlay picker can route this player's output.
     let player = AVPlayer()
@@ -50,10 +65,7 @@ final class RadioPlayer: ObservableObject {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback)
 
-        NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] note in self?.handleInterruption(note) }
-            .store(in: &playerObservers)
+        observeSessionLifecycle()
 
         NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
             .receive(on: DispatchQueue.main)
@@ -67,8 +79,8 @@ final class RadioPlayer: ObservableObject {
             .sink { [weak self] state in
                 guard let self, self.current != nil else { return }
                 switch state {
-                case .playing: self.status = "Live"
-                case .waitingToPlayAtSpecifiedRate: self.status = "Buffering"
+                case .playing: self.status = .live
+                case .waitingToPlayAtSpecifiedRate: self.status = .buffering
                 default: break
                 }
             }
@@ -101,15 +113,15 @@ final class RadioPlayer: ObservableObject {
         current == channel ? stop() : play(channel)
     }
 
-    /// Stops playback. With `keepNowPlaying`, the Now Playing item stays (rate 0, paused) so the
-    /// lock screen / remote can resume; otherwise it is cleared.
+    /// Stops playback. With `keepNowPlaying`, the Now Playing item (artwork included) stays at
+    /// rate 0, paused, so the lock screen / remote can resume; otherwise it is cleared.
     func stop(keepNowPlaying: Bool = false) {
         task?.cancel()
         itemObservers.removeAll()
         player.pause()
         player.replaceCurrentItem(with: nil)
         current = nil
-        status = ""
+        status = .idle
         let center = MPNowPlayingInfoCenter.default()
         if keepNowPlaying, var info = center.nowPlayingInfo {
             info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
@@ -131,22 +143,38 @@ final class RadioPlayer: ObservableObject {
     }
 
     #if os(iOS) || os(tvOS)
-    /// Phone call, Siri, another app taking the session. Live streams reconnect rather than resume.
-    private func handleInterruption(_ note: Notification) {
-        guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
-        switch type {
-        case .began:
-            interruptedChannel = current
-            pauseKeepingNowPlaying()
-        case .ended:
-            let optionRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
-            let shouldResume = AVAudioSession.InterruptionOptions(rawValue: optionRaw).contains(.shouldResume)
-            if shouldResume, let channel = interruptedChannel { play(channel) }
-            interruptedChannel = nil
-        @unknown default:
-            break
-        }
+    /// iOS / tvOS 27+: the session went inactive (call, Siri, another app), then the system
+    /// recommends whether to resume. Live streams reconnect rather than resume.
+    private func observeSessionLifecycle() {
+        let session = AVAudioSession.sharedInstance()
+
+        NotificationCenter.default.publisher(for: AVAudioSession.didBecomeInactiveNotification, object: session)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] note in self?.handleBecameInactive(note) }
+            .store(in: &playerObservers)
+
+        NotificationCenter.default.publisher(for: AVAudioSession.resumptionRecommendationNotification, object: session)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] note in self?.handleResumptionRecommendation(note) }
+            .store(in: &playerObservers)
+    }
+
+    private func handleBecameInactive(_ note: Notification) {
+        // Only react to the system taking the session, not to our own deactivation.
+        guard let context = note.userInfo?[AVAudioSession.deactivationContextKey] as? AVAudioSession.DeactivationContext,
+              context.source == .system,
+              let channel = current else { return }
+        interruptedChannel = channel
+        pauseKeepingNowPlaying()
+    }
+
+    private func handleResumptionRecommendation(_ note: Notification) {
+        let channel = interruptedChannel
+        interruptedChannel = nil
+        guard let context = note.userInfo?[AVAudioSession.resumptionContextKey] as? AVAudioSession.ResumptionContext,
+              context.recommendation == .shouldResume,
+              let channel else { return }
+        play(channel)
     }
 
     /// Headphones unplugged / AirPlay speaker gone: pause instead of blasting the built-in speaker.
@@ -162,18 +190,20 @@ final class RadioPlayer: ObservableObject {
         stop()
         lastChannel = channel
         current = channel
-        status = "Connecting"
+        status = .connecting
         #if os(iOS) || os(tvOS)
         try? AVAudioSession.sharedInstance().setActive(true)
         #endif
 
-        let center = MPNowPlayingInfoCenter.default()
-        let info: [String: Any] = [
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: "KCRW \(channel.title)",
             MPMediaItemPropertyArtist: "KCRW 89.9 FM",
             MPNowPlayingInfoPropertyIsLiveStream: true,
             MPNowPlayingInfoPropertyPlaybackRate: 1.0
         ]
+        if let artwork { info[MPMediaItemPropertyArtwork] = artwork }
+
+        let center = MPNowPlayingInfoCenter.default()
         center.nowPlayingInfo = info
         center.playbackState = .playing
 
@@ -188,8 +218,9 @@ final class RadioPlayer: ObservableObject {
         }
     }
 
-    /// Artwork for Control Center, the lock screen and the macOS Now Playing menu.
-    /// Loads the "NowPlayingArt" image from the asset catalog; nil (no artwork) if it's missing.
+    /// Artwork for Control Center, the lock screen, the tvOS Now Playing screen and the macOS
+    /// Now Playing menu. Loads the "NowPlayingArt" image set from the asset catalog; nil (no
+    /// artwork) if it's missing.
     /// `nonisolated` matters: the system calls the image handler on a background queue, and a
     /// main-actor-isolated closure there crashes in projects that default to main-actor isolation.
     nonisolated private static func makeArtwork() -> MPMediaItemArtwork? {
@@ -231,7 +262,7 @@ final class RadioPlayer: ObservableObject {
                         self.start(fallback, fallback: nil, channel: channel)
                     } else {
                         self.stop()
-                        self.status = "Could not play \(channel.title)"
+                        self.status = .failed("Could not play \(channel.title)")
                     }
                 }
             }

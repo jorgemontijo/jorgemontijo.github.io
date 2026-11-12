@@ -89,13 +89,26 @@
   .channel .state { font-size: 12px; min-height: 1.2em; }
   .channel.on { background: var(--amber); color: #000; }
   .message { font-size: 12px; color: var(--red); min-height: 1.2em; }
+
+  /* ---------- Donate ---------- */
+  .donate { display: flex; }
+  .donate a {
+    display: block; text-align: left; cursor: pointer;
+    font: 600 14px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color: #f23833;
+    padding: 12px 16px;
+    background: rgba(242, 56, 51, 0.14);
+    border: 1px solid rgba(242, 56, 51, 0.7);
+    border-radius: 10px;
+    text-decoration: none;
+  }
 </style>
 </head>
 <body>
 <main class="radio">
   <section class="banner">
     <h1>89.9 FM</h1>
-    <span class="freq mono">Community Radio · LOS ANGELES</span>
+    <span class="freq mono">LOS ANGELES</span>
   </section>
 
   <section class="dial" id="dial">
@@ -104,6 +117,10 @@
   </section>
 
   <section class="channels" id="channels"></section>
+
+  <section class="donate">
+    <a href="https://join.kcrw.com" target="_blank" rel="noopener">❤️&nbsp; Donate</a>
+  </section>
 
   <div class="message mono" id="message">&nbsp;</div>
 </main>

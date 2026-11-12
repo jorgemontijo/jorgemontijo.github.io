@@ -20,13 +20,6 @@ private enum M {
     static let titleSize: CGFloat = 40
     static let maxWidth: CGFloat = 520
     #endif
-
-    // Two-line tagline beside the title; one step smaller on phones to leave room for the title.
-    #if os(iOS)
-    static let tagline = Font.caption2.monospaced()
-    #else
-    static let tagline = Font.caption.monospaced()
-    #endif
 }
 
 // Dial scale: 88.0–92.0 MHz, with the station at 89.9.
@@ -73,28 +66,18 @@ struct ContentView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Spacer(minLength: 8)
-                Text("COMMUNITY RADIO • LOS ANGELES")
-                    .font(M.tagline)
-                    .foregroundStyle(amber)
-                    .multilineTextAlignment(.trailing)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-            }
-        #if !os(tvOS)
-            HStack(spacing: 12) {
+                #if !os(tvOS)
                 AirPlayButton(player: radio.player)
-                DonateButton()
+                #endif
             }
-                .frame(maxWidth: M.maxWidth, alignment: .trailing)
-                .padding(8)
-            Dial(live: radio.status == "Live")
+            Dial(live: radio.status == .live)
+                .accessibilityHidden(true)
             HStack(spacing: 12 * M.s) {
                 ForEach(Channel.allCases) { channel in
                     ChannelButton(channel: channel, radio: radio)
                 }
             }
-            #endif
-            Text(radio.current == nil ? radio.status : " ")
+            Text(radio.current == nil && radio.status != .idle ? radio.status.text : " ")
                 .font(.caption.monospaced())
                 .foregroundStyle(signalRed)
         }
@@ -104,45 +87,6 @@ struct ContentView: View {
 }
 
 #if !os(tvOS)
-private let donateRed = Color(red: 0.95, green: 0.22, blue: 0.20)
-private let donateURL = URL(string: "https://join.kcrw.com")!
-
-/// Compact version of the channel-button look, shared by the AirPlay and Donate buttons.
-private struct ActionLabel: View {
-    let title: String
-    var symbol: String? = nil
-    let tint: Color
-    var fill: Color = Color.white.opacity(0.06)
-    var stroke: Color = Color.white.opacity(0.3)
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if let symbol { Image(systemName: symbol) }
-            Text(title)
-        }
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(tint)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(fill, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(stroke, lineWidth: 1))
-        .contentShape(RoundedRectangle(cornerRadius: 10))
-    }
-}
-
-/// Red-tinted so it reads as the one call to action without competing with the amber channel buttons.
-struct DonateButton: View {
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Button { openURL(donateURL) } label: {
-            ActionLabel(title: "❤️ Donate", tint: donateRed,
-                        fill: donateRed.opacity(0.14), stroke: donateRed.opacity(0.7))
-        }
-        .buttonStyle(RadioButtonStyle())
-        .focusEffectDisabled()
-    }
-}
 
 /// Opens the system AirPlay output list. The label is ours; the system picker sits on top of it,
 /// stretched over the whole button with its own icon made transparent, so the tap lands on the picker.
@@ -150,8 +94,17 @@ struct AirPlayButton: View {
     let player: AVPlayer
 
     var body: some View {
-        ActionLabel(title: "AirPlay", symbol: "airplayaudio", tint: .white)
-            .overlay { RoutePicker(player: player) }
+        HStack(spacing: 8) {
+            Image(systemName: "airplayaudio")
+            Text("AirPlay")
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.white)
+        .padding(12)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.3), lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .overlay { RoutePicker(player: player) }
     }
 }
 
@@ -201,12 +154,15 @@ struct ChannelButton: View {
     var body: some View {
         let on = radio.current == channel
         Button { radio.toggle(channel) } label: {
-            ChannelLabel(title: channel.title, on: on, status: on ? radio.status : " ")
+            ChannelLabel(title: channel.title, on: on, status: on ? radio.status.text : " ")
         }
         .buttonStyle(RadioButtonStyle())
         #if !os(tvOS)
         .focusEffectDisabled()
         #endif
+        .accessibilityLabel(channel.title)
+        .accessibilityValue(on ? radio.status.text : "Off")
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -309,4 +265,8 @@ struct Ticks: View {
             }
         }
     }
+}
+
+#Preview {
+    ContentView()
 }
