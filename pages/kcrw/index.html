@@ -123,6 +123,13 @@
       fallback: "https://streams.kcrw.com/e24_aac" },
   ];
 
+  // Shared artwork for both channels (square PNGs)
+  const ARTWORK = [
+    { path: "/art/art_small.png",  size: 256 },
+    { path: "/art/art_medium.png", size: 512 },
+    { path: "/art/art_large.png",  size: 1024 },
+  ];
+
   const $ = id => document.getElementById(id);
   const audio = $("audio");
   const dial = $("dial");
@@ -213,23 +220,33 @@
     return ch.fallback;
   }
 
+  // Artwork must never block playback, so failures are caught and logged.
+  function setNowPlaying(ch) {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "KCRW " + ch.title,
+        artist: "KCRW 89.9 FM",
+        album: "Los Angeles",
+        artwork: ARTWORK.map(a => ({
+          src: new URL(a.path, location.href).href,
+          sizes: `${a.size}x${a.size}`,
+          type: "image/png"
+        }))
+      });
+      navigator.mediaSession.playbackState = "playing";
+    } catch (e) {
+      console.warn("Now Playing metadata failed:", e);
+    }
+  }
+
   async function play(ch) {
     stop();
     current = ch;
     setStatus("Connecting");
     const mine = token;
 
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: "KCRW " + ch.title, artist: "KCRW 89.9 FM", album: "Los Angeles",
-        artwork:[
-      {scr: "/art/art_small.png", sizes: "256 x 256"},
-      {scr: "/art/art_medium.png", sizes: "512 x 512"},
-      {scr: "/art/art_large.png", sizes: "1024 x 1024"}
-        ]
-      });
-      navigator.mediaSession.playbackState = "playing";
-    }
+    setNowPlaying(ch);
 
     const url = await resolve(ch);
     if (mine !== token) return;
