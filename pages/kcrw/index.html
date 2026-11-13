@@ -179,17 +179,6 @@
 
   function setStatus(s) { status = s; render(); }
 
-  navigator.mediaSession.metadata = new MediaMetadata({
-    title: "KCRW" + ch.title,
-    artist: "KCRW 89.9 FM",
-    album: "Los Angeles",
-    artwork: [
-      {scr: "/art/art_small" sizes: "256 x 256"},
-      {scr: "/art/art_medium" sizes: "512 x 512"},
-      {scr: "/art/art_large" sizes: "1024 x 1024"},
-    ]
-  })
-
   function toggle(ch) { current === ch ? stop() : play(ch); }
 
   function stop(message = "") {
@@ -232,7 +221,12 @@
 
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: "KCRW " + ch.title, artist: "KCRW 89.9 FM"
+        title: "KCRW " + ch.title, artist: "KCRW 89.9 FM", album: "Los Angeles",
+        artwork:[
+      {scr: "/art/art_small.png", sizes: "256 x 256"},
+      {scr: "/art/art_medium.png", sizes: "512 x 512"},
+      {scr: "/art/art_large.png", sizes: "1024 x 1024"}
+        ]
       });
       navigator.mediaSession.playbackState = "playing";
     }
